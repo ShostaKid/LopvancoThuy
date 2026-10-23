@@ -1,0 +1,128 @@
+/* Giao diện chung (SPEC 3: mobile-first, gọn, trung tính).
+   Bảng màu, font và kiểu thẻ/bảng/nút theo mẫu cổng sinh viên USTH (không dùng logo, tên trường). */
+
+:root {
+  --navy: #1b2769;          /* thanh trên cùng */
+  --primary: #273896;       /* nút, link, gạch chân tiêu đề */
+  --primary-soft: #e0ecff;  /* đầu bảng, viền focus */
+  --panel: #f2f6fc;         /* nền khối phụ, nền trang đăng nhập */
+  --accent: #ed1c24;        /* chữ nhấn trong tiêu đề trang */
+  --text: rgba(0, 0, 0, 0.88);
+  --muted: rgba(0, 0, 0, 0.55);
+  --border: #d9d9d9;
+  --line: #eef0f3;
+  --success: #12871f;       /* mẫu dùng #0ec122, làm đậm hơn cho dễ đọc trên nền sáng */
+  --success-soft: #f0fff1;
+  --warning: #ad6800;
+  --warning-soft: #fff7e6;
+  --danger: #cf1322;
+  --danger-soft: #fff1f0;
+  --radius-card: 16px;
+  --radius-field: 8px;
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.12);
+  --font: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font: 16px/1.5 var(--font); color: var(--text); background: #fff; }
+[hidden] { display: none !important; }
+a { color: var(--primary); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--primary-soft); outline-offset: 2px; }
+
+.container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+.muted { color: var(--muted); }
+.boot { padding: 32px 16px; text-align: center; color: var(--muted); }
+
+/* ---------- Thanh trên cùng + header ---------- */
+
+.topbar { background: var(--navy); color: #fff; font-size: 14px; font-weight: 600; }
+.topbar__inner { display: flex; align-items: center; justify-content: flex-end; gap: 16px; min-height: 38px; }
+.badge { display: inline-block; margin-left: 8px; padding: 1px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); font-size: 12px; }
+.link-btn { padding: 8px 0; border: 0; background: none; color: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.header { position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+.header__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 60px; }
+.brand { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; }
+
+/* Điện thoại: nút menu ghi tên trang đang mở, bấm thì xổ danh sách */
+.menu-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--primary); border-radius: 999px; background: #fff; color: var(--primary); font-weight: 600; cursor: pointer; }
+.menu-toggle::before { content: '☰'; font-size: 18px; line-height: 1; }
+.nav { display: none; flex-basis: 100%; flex-direction: column; padding: 4px 0 12px; }
+.nav.is-open { display: flex; }
+.nav a { padding: 12px; border-radius: 8px; color: var(--text); font-weight: 600; text-decoration: none; }
+.nav a[aria-current="page"] { color: var(--primary); background: var(--panel); }
+
+@media (min-width: 900px) {
+  .menu-toggle { display: none; }
+  .nav { display: flex; flex-direction: row; flex-basis: auto; gap: 4px; padding: 0; }
+  .nav a { padding: 18px 10px 16px; border-radius: 0; border-bottom: 2px solid transparent; font-size: 14px; }
+  .nav a:hover { color: var(--primary); }
+  .nav a[aria-current="page"] { background: none; border-bottom-color: var(--primary); }
+}
+
+/* ---------- Trang ---------- */
+
+.page { padding-top: 16px; padding-bottom: 48px; }
+.page-title { margin: 0 0 16px; font-size: 22px; font-weight: 600; line-height: 1.3; }
+.page-title em { font-style: normal; color: var(--accent); }
+.section-title { margin: 0 0 20px; font-size: 22px; font-weight: 600; text-align: center; }
+.section-title::after { content: ''; display: block; width: 120px; height: 3px; margin: 8px auto 0; background: var(--primary); }
+@media (min-width: 900px) {
+  .page { padding-top: 24px; }
+  .page-title { font-size: 24px; }
+}
+
+.card { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: #fff; box-shadow: var(--shadow-card); }
+.card--panel { border-color: transparent; background: var(--panel); box-shadow: none; }
+.card > :first-child { margin-top: 0; }
+.card > :last-child { margin-bottom: 0; }
+
+/* ---------- Nút ---------- */
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border: 1px solid var(--primary); border-radius: 999px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.btn--primary { background: var(--primary); color: #fff; }
+.btn--outline { background: #fff; color: var(--primary); }
+.btn--block { width: 100%; }
+.btn:disabled { opacity: 0.6; cursor: progress; }
+
+/* ---------- Nhãn trạng thái ---------- */
+
+.pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.pill--success { background: var(--success-soft); color: var(--success); }
+.pill--warning { background: var(--warning-soft); color: var(--warning); }
+.pill--danger { background: var(--danger-soft); color: var(--danger); }
+.pill--muted { background: #f0f0f0; color: var(--muted); }
+
+/* ---------- Ô nhập ---------- */
+
+.field { display: block; margin-bottom: 16px; }
+.field__label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; }
+/* 16px để iPhone không tự phóng to khi chạm vào ô */
+.field input, .field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-field); background: #fff; font-size: 16px; }
+.field input:focus, .field select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.form-error { min-height: 1.5em; margin: 8px 0 0; color: var(--danger); font-size: 14px; }
+
+/* ---------- Bảng (dùng từ bước 3) ---------- */
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { padding: 12px; background: var(--primary-soft); font-weight: 600; text-align: left; white-space: nowrap; }
+.table td { padding: 12px; border-top: 1px solid var(--line); }
+
+/* ---------- Đăng nhập ---------- */
+
+.login { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--panel); }
+.login__bar { height: 38px; background: var(--navy); }
+.login__main { display: flex; flex: 1; align-items: center; justify-content: center; padding: 24px 16px; }
+.login__card { width: 100%; max-width: 400px; padding: 28px 20px; border-radius: 20px; background: #fff; box-shadow: var(--shadow-card); }
+.login__brand { margin: 0 0 8px; color: var(--primary); font-size: 20px; font-weight: 700; text-align: center; }
+@media (min-width: 600px) {
+  .login__card { padding: 36px 32px; }
+}
+
+/* ---------- Khung chờ (màn hình chưa làm) ---------- */
+
+.perm-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.perm-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #fff; }

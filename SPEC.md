@@ -15,11 +15,12 @@
 
 | Vai trò | Ai | Cách vào | Quyền |
 |---|---|---|---|
-| Admin | Giáo viên + 1 trợ giảng | Đăng nhập email/mật khẩu (Supabase Auth), **mỗi người 1 tài khoản riêng** | Toàn quyền như nhau |
+| Admin | Giáo viên | Đăng nhập email/mật khẩu (Supabase Auth), **mỗi người 1 tài khoản riêng** | Toàn quyền |
+| Co-admin | 1 trợ giảng | Như Admin | Như Admin, **trừ**: chốt / mở lại tháng, sửa Cài đặt |
 | Phụ huynh | ~200 phụ huynh | **Không đăng nhập** | Chỉ tra cứu đúng 1 học sinh bằng họ tên đầy đủ, báo "đã chuyển khoản" |
 
-Quy ước: **ai đăng nhập được = admin**. Không cần bảng phân quyền.
-**Bắt buộc:** tắt "Allow new users to sign up" trong Supabase Auth; 2 tài khoản admin được tạo tay trong dashboard.
+Quy ước: vai trò lưu trong bảng `staff` (4.10). Tài khoản đăng nhập được nhưng **không có trong `staff` thì không làm được gì**. Quyền chặn ở database (RLS, trigger); giao diện chỉ ẩn nút cho gọn.
+**Bắt buộc:** tắt "Allow new users to sign up" trong Supabase Auth; 2 tài khoản được tạo tay trong dashboard rồi gán vai trò trong `staff`.
 
 ## 3. Stack & hosting
 
@@ -120,10 +121,22 @@ Unique `(student_id, month)`. **Mỗi học sinh 1 hóa đơn/tháng** dù học
 ### 4.9 `settings` — 1 dòng duy nhất
 `bank_bin` (mã ngân hàng cho VietQR), `account_no`, `account_name`, `default_fee` (200000). Admin sửa được trong trang Cài đặt.
 
+### 4.10 `staff` — ai được vào trang quản lý, vai trò gì
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| `user_id` | uuid, khóa chính → auth.users | Không có cột `id` riêng |
+| `role` | text | `admin` / `co_admin` |
+| `display_name` | text | Tên hiện trên menu |
+
+Gán vai trò bằng SQL; bản đầu không có màn hình quản lý tài khoản. Qua API chỉ đọc được, không ai sửa được bảng này.
+
 ## 5. Bảo mật (quan trọng nhất)
 
 - Bật **RLS trên mọi bảng**.
-- Role `authenticated` (admin): full CRUD mọi bảng.
+- Người có trong `staff`:
+  - Admin: full CRUD mọi bảng (trừ `staff`).
+  - Co-admin: như Admin, trừ: không ghi `month_closings` và `settings`; không tạo/xóa `invoices`; không sửa số buổi, số tiền, nội dung CK của hóa đơn (chỉ đổi trạng thái: xác nhận, hoàn tác, đưa về chưa đóng).
+- Đăng nhập được mà không có trong `staff`: không đọc/ghi được gì.
 - Role `anon` (phụ huynh): **không có policy SELECT/INSERT/UPDATE/DELETE trên bất kỳ bảng nào.** Anon key nằm công khai trong JS, nên nếu bảng đọc được công khai thì ai cũng tải được toàn bộ danh sách 200 em qua API. Phụ huynh chỉ đi qua 2 hàm RPC dưới đây.
 
 ### 5.1 RPC `lookup_student(p_name text)` — `SECURITY DEFINER`, `GRANT EXECUTE` cho `anon`
@@ -203,7 +216,7 @@ Chỉ hiện QR khi hóa đơn `unpaid` hoặc `reported`. Đã `confirmed` → 
 - Công cụ "Chuyển khóa": chọn học sinh của khóa cũ để ghi danh sang lớp ở khóa mới (VD lớp 9 lên lớp 10).
 
 **A5. Học phí tháng**
-- Chọn tháng → nút Chốt tháng / Mở lại.
+- Chọn tháng → nút Chốt tháng / Mở lại (chỉ hiện với Admin).
 - Bảng hóa đơn: mã HS, tên, lớp, số buổi, số tiền, nội dung CK, trạng thái. Lọc theo trạng thái; mặc định đẩy `reported` lên đầu.
 - Mỗi dòng có nút **Xác nhận đã nhận tiền** (và hoàn tác). Dòng `reported` có thêm nút **Đưa về chưa đóng** (xóa `reported_at`, `reported_amount`).
 - Sau khi chốt lại tháng, hiện cảnh báo nổi bật cho các dòng cần xem (6.3): `confirmed` bị đổi số buổi, `reported` có `amount` khác `reported_amount` (hiện cả hai số), và hóa đơn `reported`/`confirmed` còn 0 buổi.
@@ -214,7 +227,7 @@ Chỉ hiện QR khi hóa đơn `unpaid` hoặc `reported`. Đã `confirmed` → 
 - **Xuất Excel/CSV** (hóa đơn tháng + điểm danh tháng) — đây là cách backup của chủ dự án.
 - Lưu ý: học sinh học nhiều lớp thì doanh thu chia theo lớp tính từ từng buổi có mặt, không chia đều hóa đơn.
 
-**A7. Cài đặt** — thông tin tài khoản nhận tiền, giá mặc định.
+**A7. Cài đặt** — thông tin tài khoản nhận tiền, giá mặc định. Co-admin chỉ xem.
 
 ## 8. Ngoài phạm vi bản đầu (không làm)
 - Tự động điểm danh qua Zoom (sau này: nấc 2 là upload CSV báo cáo người tham gia, nấc 3 là API/webhook).
@@ -228,8 +241,8 @@ Mỗi bước xong thì dừng, báo chủ dự án kiểm tra theo mục "Kiể
 
 1. **Database**: tạo bảng, ràng buộc, hàm chuẩn hóa tên, trigger, RLS, 2 RPC, seed khóa 2026–2027 + `settings`.
    *Kiểm tra:* dùng anon key gọi thẳng `select` vào `students` → phải bị chặn; gọi `lookup_student` với tên đúng → ra đúng 1 em.
-2. **Khung frontend + đăng nhập admin + menu**, deploy lên GitHub Pages.
-   *Kiểm tra:* đăng nhập được trên điện thoại.
+2. **Khung frontend + đăng nhập + menu theo vai trò.** Làm phần logic trước; giao diện ghép sau theo mẫu chủ dự án chọn. Deploy GitHub Pages khi đã có giao diện.
+   *Kiểm tra:* đăng nhập được (trên máy tính trước, điện thoại sau khi deploy); co-admin không chốt được tháng, không sửa được Cài đặt.
 3. **A4 Lớp & khóa + A3 Học sinh** (kèm nhập hàng loạt).
    *Kiểm tra:* nhập thử 1 lớp thật.
 4. **A2 Điểm danh.**
@@ -247,3 +260,4 @@ Mỗi bước xong thì dừng, báo chủ dự án kiểm tra theo mục "Kiể
   - Thêm cột `invoices.reported_amount`; quy tắc chốt lại tháng cho hóa đơn `reported` và hóa đơn còn 0 buổi (4.8, 5.2, 6.3, 7 A5).
   - Khóa sửa điểm danh tháng đã chốt chặn ở database (6.3).
   - Giữ giới hạn nội dung CK ≤ 50 ký tự; giới hạn thật của VietQR chưa xác minh, sẽ thử thực tế ở bước 6 rồi sửa nếu bị cắt (6.2).
+- **24/10/2026** — tách vai trò Admin (cô giáo) / co-admin (trợ giảng). Co-admin không chốt / mở lại tháng, không sửa Cài đặt. Thêm bảng `staff` (2, 4.10, 5, 7 A5, A7). Bước 2 làm logic trước, giao diện và deploy sau (9).

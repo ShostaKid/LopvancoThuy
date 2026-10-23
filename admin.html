@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý lớp</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"
+          integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"
+          crossorigin="anonymous"></script>
+  <script type="module" src="js/admin.js"></script>
+</head>
+<body>
+  <p id="boot-status" class="boot">Đang tải…</p>
+
+  <section id="login-view" class="login" hidden>
+    <div class="login__bar"></div>
+    <main class="login__main">
+      <div class="login__card">
+        <p class="login__brand">Quản lý lớp</p>
+        <h1 class="section-title">Đăng nhập</h1>
+        <form id="login-form">
+          <label class="field">
+            <span class="field__label">Email</span>
+            <input type="email" name="email" autocomplete="username" required>
+          </label>
+          <label class="field">
+            <span class="field__label">Mật khẩu</span>
+            <input type="password" name="password" autocomplete="current-password" required>
+          </label>
+          <button type="submit" class="btn btn--primary btn--block">Đăng nhập</button>
+          <p id="login-error" class="form-error" role="alert"></p>
+        </form>
+      </div>
+    </main>
+  </section>
+
+  <section id="app-view" hidden>
+    <div class="topbar">
+      <div class="container topbar__inner">
+        <span id="who"></span>
+        <button type="button" id="logout-btn" class="link-btn">Đăng xuất</button>
+      </div>
+    </div>
+    <header class="header">
+      <div class="container header__inner">
+        <a class="brand" href="#/">Quản lý lớp</a>
+        <button type="button" id="menu-toggle" class="menu-toggle" aria-expanded="false" aria-controls="menu">Menu</button>
+        <nav id="menu" class="nav" aria-label="Menu chính"></nav>
+      </div>
+    </header>
+    <main id="view" class="container page"></main>
+  </section>
+</body>
+</html>
