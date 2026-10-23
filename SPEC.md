@@ -112,6 +112,7 @@ Khóa chính `(session_id, student_id)`.
 | `transfer_note` | text | Xem 6.2 |
 | `status` | text | `unpaid` → `reported` → `confirmed` |
 | `reported_at` | timestamptz, nullable | Phụ huynh bấm "Tôi đã chuyển khoản" |
+| `reported_amount` | integer, nullable | Số tiền tại lúc phụ huynh bấm báo chuyển. Dùng để đối chiếu nếu chốt lại tháng làm đổi số tiền (6.3) |
 | `confirmed_at`, `confirmed_by` | nullable | Chỉ admin |
 
 Unique `(student_id, month)`. **Mỗi học sinh 1 hóa đơn/tháng** dù học nhiều lớp → phụ huynh chỉ quét 1 QR.
@@ -130,15 +131,18 @@ Unique `(student_id, month)`. **Mỗi học sinh 1 hóa đơn/tháng** dù học
 - Nếu input sau chuẩn hóa ít hơn 2 từ → trả rỗng.
 - Trả về cho mỗi học sinh khớp (thường 1, trùng tên thì nhiều):
   - `code`, `full_name`, tên các lớp đang học trong khóa hiện tại
-  - hóa đơn **của tháng đã chốt gần nhất**: `month`, `sessions_count`, `amount`, `status`, `transfer_note`
-  - **danh sách ngày có mặt** trong tháng đó (để phụ huynh tự đối chiếu)
+  - các hóa đơn, mới nhất trước, mỗi hóa đơn gồm `month`, `sessions_count`, `amount`, `status`, `transfer_note`:
+    - hóa đơn **của tháng đã chốt gần nhất** (kể cả đã `confirmed`)
+    - **cộng mọi hóa đơn tháng cũ chưa `confirmed`** (`unpaid` hoặc `reported`), để nhắc phụ huynh còn nợ hoặc quên bấm báo chuyển
+    - chỉ lấy hóa đơn của tháng **đang ở trạng thái đã chốt**; tháng đang mở lại thì tạm ẩn
+  - **danh sách ngày có mặt** của từng tháng trả về (để phụ huynh tự đối chiếu)
   - thông tin tài khoản nhận tiền từ `settings`
 - **Không** trả `dob`, `note`, hay bất kỳ học sinh nào khác.
 - Nếu trùng tên: frontend hiện các kết quả kèm mã HS + tên lớp để phụ huynh chọn.
 
 ### 5.2 RPC `report_payment(p_code text, p_month text)` — `SECURITY DEFINER`, cho `anon`
-- Chỉ đổi `unpaid` → `reported` và ghi `reported_at`. **Không bao giờ** đặt được `confirmed`, không đổi số tiền.
-- Đã `reported`/`confirmed` thì không làm gì.
+- Chỉ đổi `unpaid` → `reported`, ghi `reported_at` và `reported_amount` (= `amount` lúc đó). **Không bao giờ** đặt được `confirmed`, không đổi số tiền.
+- Đã `reported`/`confirmed` thì không làm gì. Tháng đang mở lại (chưa chốt) thì không làm gì.
 
 ## 6. Quy tắc nghiệp vụ
 
@@ -155,9 +159,15 @@ VD: `NGUYEN VAN AN HOC PHI T10 HS042`
 
 ### 6.3 Chốt tháng
 - Admin chọn tháng → bấm "Chốt tháng" → hệ thống tạo hóa đơn cho **mọi học sinh có ≥ 1 buổi có mặt** trong tháng đó. Học sinh 0 buổi: không tạo hóa đơn.
-- Sau khi chốt: số tiền khóa lại; điểm danh các buổi trong tháng đã chốt **bị khóa sửa**.
-- "Mở lại tháng": cho phép, kèm cảnh báo rõ. Khi chốt lại, **chỉ tính lại hóa đơn chưa `confirmed`**; hóa đơn đã xác nhận giữ nguyên và hiển thị cảnh báo nếu số buổi mới khác số buổi cũ.
-- Trước khi chốt, phụ huynh tra cứu chỉ thấy hóa đơn tháng đã chốt gần nhất (không thấy QR tạm tính).
+- Sau khi chốt: số tiền khóa lại; điểm danh các buổi trong tháng đã chốt **bị khóa sửa**. Khóa này chặn ngay ở database (trigger trên `sessions` và `attendance`), không chỉ ở giao diện.
+- "Mở lại tháng": cho phép, kèm cảnh báo rõ. Trong lúc mở lại, phụ huynh tạm không thấy hóa đơn tháng đó.
+- Khi chốt lại, tính lại theo trạng thái từng hóa đơn:
+  - `confirmed`: giữ nguyên; cảnh báo nếu số buổi mới khác số buổi cũ.
+  - `reported`: tính lại `sessions_count`/`amount`, **giữ nguyên trạng thái `reported`** và `reported_amount`. Nếu `amount` mới khác `reported_amount` → cảnh báo trên A5, hiện cả hai số để admin đối chiếu sao kê rồi tự xác nhận hoặc đưa về `unpaid`.
+  - `unpaid`: tính lại.
+  - Còn 0 buổi sau khi chốt lại: hóa đơn `unpaid` thì **xóa**; `reported`/`confirmed` thì **giữ lại và cảnh báo** để admin xử lý (VD trả lại tiền).
+  - Học sinh mới có buổi: tạo hóa đơn mới.
+- Trước khi chốt, phụ huynh tra cứu chỉ thấy hóa đơn các tháng đã chốt (không thấy QR tạm tính).
 
 ### 6.4 QR
 `https://img.vietqr.io/image/{bank_bin}-{account_no}-compact2.png?amount={amount}&addInfo={transfer_note URL-encoded}&accountName={account_name URL-encoded}`
@@ -168,7 +178,9 @@ Chỉ hiện QR khi hóa đơn `unpaid` hoặc `reported`. Đã `confirmed` → 
 ### Phụ huynh (công khai)
 **P1. Tra cứu** — trang chủ của web.
 - 1 ô "Nhập họ và tên đầy đủ của con", nút Tra cứu. Không có danh sách, không gợi ý.
-- Kết quả: tên, **mã HS (hiển thị rõ, kèm giải thích ngắn "Mã này sẽ nằm cuối nội dung chuyển khoản")**, lớp đang học, tháng, số buổi + các ngày có mặt, số tiền, QR, nội dung chuyển khoản (có nút copy), nút **Tải mã QR**, nút **"Tôi đã chuyển khoản"** (tách riêng với nút tải; bấm xong hiện "Đã ghi nhận, cô sẽ kiểm tra và xác nhận").
+- Kết quả: tên, **mã HS (hiển thị rõ, kèm giải thích ngắn "Mã này sẽ nằm cuối nội dung chuyển khoản")**, lớp đang học.
+- Bên dưới, **mỗi tháng là một khung riêng** (mới nhất trước), mỗi khung có: tháng, số buổi + các ngày có mặt, số tiền, QR riêng, nội dung chuyển khoản riêng (có nút copy), nút **Tải mã QR**, nút **"Tôi đã chuyển khoản"** riêng (tách riêng với nút tải; bấm xong hiện "Đã ghi nhận, cô sẽ kiểm tra và xác nhận").
+- Khung tháng cũ còn nợ có nhãn nhắc rõ (VD "Tháng 9 chưa đóng"). Khung đã báo chuyển thì thay nút bằng dòng "Đã báo, chờ cô xác nhận". Không gộp nhiều tháng vào một QR, để mỗi khoản tiền trên sao kê ứng với đúng một tháng.
 - Không tìm thấy: "Không tìm thấy học sinh. Vui lòng kiểm tra lại họ tên đầy đủ có dấu hoặc liên hệ cô."
 
 ### Admin (sau đăng nhập), có menu điều hướng
@@ -193,7 +205,8 @@ Chỉ hiện QR khi hóa đơn `unpaid` hoặc `reported`. Đã `confirmed` → 
 **A5. Học phí tháng**
 - Chọn tháng → nút Chốt tháng / Mở lại.
 - Bảng hóa đơn: mã HS, tên, lớp, số buổi, số tiền, nội dung CK, trạng thái. Lọc theo trạng thái; mặc định đẩy `reported` lên đầu.
-- Mỗi dòng có nút **Xác nhận đã nhận tiền** (và hoàn tác).
+- Mỗi dòng có nút **Xác nhận đã nhận tiền** (và hoàn tác). Dòng `reported` có thêm nút **Đưa về chưa đóng** (xóa `reported_at`, `reported_amount`).
+- Sau khi chốt lại tháng, hiện cảnh báo nổi bật cho các dòng cần xem (6.3): `confirmed` bị đổi số buổi, `reported` có `amount` khác `reported_amount` (hiện cả hai số), và hóa đơn `reported`/`confirmed` còn 0 buổi.
 
 **A6. Báo cáo**
 - Theo tháng: tổng phải thu, đã xác nhận, phụ huynh báo đã chuyển (chưa kiểm tra), còn nợ; chia theo lớp (số buổi đã dạy, lượt có mặt, doanh thu); danh sách còn nợ.
@@ -226,3 +239,11 @@ Mỗi bước xong thì dừng, báo chủ dự án kiểm tra theo mục "Kiể
 6. **P1 Trang tra cứu phụ huynh.**
    *Kiểm tra:* quét QR bằng 2–3 app ngân hàng khác nhau, xem số tiền và nội dung CK có hiện đúng, không bị cắt mã HS.
 7. **A6 Báo cáo + xuất Excel.**
+
+## 10. Nhật ký thay đổi
+
+- **23/10/2026** — chốt thêm với chủ dự án trước khi build:
+  - Phụ huynh tra cứu thấy cả hóa đơn tháng cũ chưa `confirmed`, mỗi tháng một khung và một QR riêng (5.1, 7 P1).
+  - Thêm cột `invoices.reported_amount`; quy tắc chốt lại tháng cho hóa đơn `reported` và hóa đơn còn 0 buổi (4.8, 5.2, 6.3, 7 A5).
+  - Khóa sửa điểm danh tháng đã chốt chặn ở database (6.3).
+  - Giữ giới hạn nội dung CK ≤ 50 ký tự; giới hạn thật của VietQR chưa xác minh, sẽ thử thực tế ở bước 6 rồi sửa nếu bị cắt (6.2).
