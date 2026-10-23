@@ -1,11 +1,13 @@
 // Menu trang quản lý (SPEC 7). Màn hình nào chưa có `render` thì hiện khung chờ;
 // các bước sau thay bằng module thật, VD { ..., render: renderDiemDanh }.
 // `actions`: những việc có phân quyền trong màn hình đó (xem roles.js).
+import { renderHocSinh } from './views/hoc-sinh.js';
+import { renderLopKhoa } from './views/lop-khoa.js';
 
 export const ROUTES = [
   { path: 'diem-danh', label: 'Điểm danh', step: 4 },
-  { path: 'hoc-sinh', label: 'Học sinh', step: 3 },
-  { path: 'lop-khoa', label: 'Lớp & khóa', step: 3 },
+  { path: 'hoc-sinh', label: 'Học sinh', render: renderHocSinh },
+  { path: 'lop-khoa', label: 'Lớp & khóa', render: renderLopKhoa },
   { path: 'hoc-phi', label: 'Học phí', step: 5, actions: ['month.close'] },
   { path: 'bao-cao', label: 'Báo cáo', step: 7 },
   { path: 'cai-dat', label: 'Cài đặt', step: 5, actions: ['settings.edit'] },

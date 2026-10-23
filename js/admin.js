@@ -46,7 +46,8 @@ function showLogin(message) {
 function showApp(staff) {
   $('login-view').hidden = true;
   $('app-view').hidden = false;
-  $('who').replaceChildren(h('span', null, staff.displayName), h('span', 'badge', ROLE_LABELS[staff.role]));
+  // Nhãn vai trò đặt trước để trên điện thoại tên dài bị cắt vẫn thấy vai trò
+  $('who').replaceChildren(h('span', 'badge', ROLE_LABELS[staff.role]), h('span', null, staff.displayName));
 
   $('menu').replaceChildren(...ROUTES.map((r) => {
     const a = h('a', null, r.label);
@@ -65,7 +66,10 @@ function showApp(staff) {
     $('menu-toggle').textContent = route.label;
     setMenuOpen(false);
     window.scrollTo(0, 0);
-    (route.render ?? renderPlaceholder)($('view'), ctx, route);
+    // Mỗi lần chuyển trang dùng 1 khung mới: màn hình cũ tải xong muộn cũng không vẽ đè lên màn hình mới
+    const host = h('div');
+    $('view').replaceChildren(host);
+    (route.render ?? renderPlaceholder)(host, ctx, route);
   });
 }
 
