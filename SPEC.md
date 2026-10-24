@@ -123,6 +123,8 @@ Unique `(student_id, month)`. **Mỗi học sinh 1 hóa đơn/tháng** dù học
 ### 4.9 `settings` — 1 dòng duy nhất
 `default_fee` (200000). Admin sửa được trong trang Cài đặt. Từ 24/10/2026 tài khoản ngân hàng không còn nằm ở đây mà ở bảng `bank_accounts`.
 
+### 4.9b `bank_accounts` — tài khoản nhận học phí (nhiều tài khoản)
+`label` (tên gọi), `bank_bin`, `account_no`, `account_name`. Mỗi lớp chọn 1 tài khoản (`classes.bank_account_id`, bắt buộc). Hóa đơn lưu `invoices.bank_account_id` lúc chốt tháng: em học nhiều lớp khác tài khoản thì lấy tài khoản của lớp em có mặt nhiều buổi nhất trong tháng (hòa thì lớp có tên đứng trước), và `close_month` cảnh báo Admin. Chỉ Admin thêm/sửa/xóa; xóa chỉ được khi chưa lớp hay hóa đơn nào dùng.
 
 
 ### 4.10 `staff` — ai được vào trang quản lý, vai trò gì
