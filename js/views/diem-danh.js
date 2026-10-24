@@ -1,12 +1,14 @@
-// A2. Điểm danh (SPEC 7): chọn ngày + lớp, mặc định cả lớp có mặt, chạm tên để chuyển vắng, lưu 1 lần
+// A2. Điểm danh (SPEC 7): chọn ngày, chỉ hiện lớp có tiết hôm đó; mặc định cả lớp có mặt,
+// chạm tên để chuyển vắng, mỗi em có thể đổi Offline/Online cho riêng buổi đó; lưu 1 lần
 import { db } from '../db.js';
 import { h } from '../dom.js';
 import { q, loadTerms, loadClasses } from '../data.js';
-import { formatDate, vnToday, weekdayOf, addDays, compareVnNames } from '../format.js';
+import { formatDate, formatWeekdays, vnToday, weekdayOf, addDays, compareVnNames } from '../format.js';
 import { button, busy, field, input, select, callout, toast } from '../ui.js';
 
 // Giữ ngày và lớp đang chọn khi chuyển qua lại giữa các màn hình
 const state = { date: null, classId: '' };
+const MODE_LABEL = { offline: 'Offline', online: 'Online' };
 
 export async function renderDiemDanh(el) {
   const title = h('h1', 'page-title', 'Điểm danh');
@@ -36,30 +38,24 @@ export async function renderDiemDanh(el) {
 
   const dateInput = input('date', 'date', state.date);
   const classSelect = select('class', [], '');
+  const classField = field('Lớp', classSelect);
   const rosterBox = h('div');
 
-  // Lớp có học hôm đó (theo thứ) lên đầu, lớp khác xếp dưới
+  const lessonsOn = (date) => active.filter((c) => c.weekdays.includes(weekdayOf(date)));
+
+  // Ngày gần nhất (không quá hôm nay) có ít nhất 1 lớp có tiết
+  function lastLessonDate() {
+    for (let i = 0, d = vnToday(); i < 14; i += 1, d = addDays(d, -1)) if (lessonsOn(d).length) return d;
+    return null;
+  }
+
   function fillClassOptions() {
-    const wd = weekdayOf(state.date);
-    const today = active.filter((c) => c.weekdays.includes(wd));
-    const other = active.filter((c) => !c.weekdays.includes(wd));
-    classSelect.replaceChildren();
-    const group = (label, list) => {
-      if (!list.length) return;
-      const g = h('optgroup');
-      g.label = label;
-      for (const c of list) {
-        const o = h('option', null, c.name);
-        o.value = c.id;
-        g.append(o);
-      }
-      classSelect.append(g);
-    };
-    if (today.length) { group('Lớp có học hôm nay', today); group('Lớp khác', other); }
-    else group('Tất cả lớp', other);
-    const keep = active.some((c) => c.id === state.classId) ? state.classId : (today[0] ?? active[0]).id;
-    classSelect.value = keep;
-    state.classId = keep;
+    const list = lessonsOn(state.date);
+    classSelect.replaceChildren(...list.map((c) => { const o = h('option', null, c.name); o.value = c.id; return o; }));
+    classField.hidden = !list.length;
+    if (!list.length) return;
+    state.classId = list.some((c) => c.id === state.classId) ? state.classId : list[0].id;
+    classSelect.value = state.classId;
   }
 
   const confirmLeave = () => !dirty || confirm('Điểm danh chưa lưu sẽ mất. Vẫn chuyển?');
@@ -91,7 +87,7 @@ export async function renderDiemDanh(el) {
   dateField.append(h('span', 'field__label', 'Ngày'), dateRow);
 
   const controls = h('div', 'card card--panel');
-  controls.append(dateField, field('Lớp', classSelect));
+  controls.append(dateField, classField);
   el.replaceChildren(title, controls, rosterBox);
 
   // Cảnh báo khi rời trang với điểm danh chưa lưu (đóng tab, tải lại). Gỡ khi màn hình bị thay.
@@ -102,19 +98,35 @@ export async function renderDiemDanh(el) {
   });
   watch.observe(document.getElementById('view'), { childList: true });
 
+  function renderNoLesson() {
+    const box = h('div');
+    box.append(callout(`Ngày ${formatDate(state.date)} không có lớp nào có tiết nên không điểm danh được.`, 'warning'));
+    const schedule = h('ul', 'perm-list');
+    for (const c of active) {
+      const li = h('li');
+      li.append(h('span', null, c.name), h('span', 'pill pill--muted', formatWeekdays(c.weekdays)));
+      schedule.append(li);
+    }
+    box.append(h('p', 'muted small', 'Lịch các lớp:'), schedule);
+    const last = lastLessonDate();
+    if (last) box.append(h('div', 'btn-row'), button(`Đến ngày có tiết gần nhất (${formatDate(last)})`, 'primary', () => setDate(last)));
+    rosterBox.replaceChildren(box);
+  }
+
   async function load() {
     const token = ++loadToken;
     dirty = false;
+    if (!lessonsOn(state.date).length) { renderNoLesson(); return; }
     rosterBox.replaceChildren(h('p', 'muted', 'Đang tải danh sách…'));
     const date = state.date;
     const classId = state.classId;
     try {
       const [enrolled, session, closed] = await Promise.all([
         q(db.from('enrollments')
-          .select('student_id, left_on, students(id, code, full_name, active)')
+          .select('student_id, left_on, students(id, code, full_name, active, mode)')
           .eq('class_id', classId).eq('term_id', current.id)),
         q(db.from('sessions')
-          .select('id, attendance(student_id, present, marked_at)')
+          .select('id, attendance(student_id, present, mode, marked_at)')
           .eq('class_id', classId).eq('date', date).maybeSingle()),
         q(db.from('month_closings').select('month').eq('month', date.slice(0, 7)).maybeSingle()),
       ]);
@@ -127,7 +139,7 @@ export async function renderDiemDanh(el) {
   }
 
   function renderRoster({ date, classId, enrolled, session, closed }) {
-    const saved = new Map((session?.attendance ?? []).map((a) => [a.student_id, a.present]));
+    const saved = new Map((session?.attendance ?? []).map((a) => [a.student_id, a]));
 
     // Em còn học lớp tại ngày đó + em đã có dòng điểm danh (giữ nguyên dù sau này nghỉ)
     const roster = new Map();
@@ -136,7 +148,8 @@ export async function renderDiemDanh(el) {
       if ((stillIn && e.students.active) || saved.has(e.student_id)) roster.set(e.student_id, e.students);
     }
     const students = [...roster.values()].sort((a, b) => compareVnNames(a.full_name, b.full_name));
-    const present = new Map(students.map((s) => [s.id, saved.get(s.id) ?? true]));
+    const present = new Map(students.map((s) => [s.id, saved.get(s.id)?.present ?? true]));
+    const mode = new Map(students.map((s) => [s.id, saved.get(s.id)?.mode ?? s.mode]));
     const className = classSelect.selectedOptions[0].textContent;
     const future = date > vnToday();
 
@@ -162,45 +175,57 @@ export async function renderDiemDanh(el) {
     saveBtn.disabled = locked;
 
     const updateSummary = () => {
-      const n = [...present.values()].filter(Boolean).length;
-      summary.replaceChildren(h('strong', null, `Có mặt ${n}/${students.length}`), h('span', 'muted', ` · Vắng ${students.length - n}`));
+      const here = students.filter((s) => present.get(s.id));
+      const online = here.filter((s) => mode.get(s.id) === 'online').length;
+      summary.replaceChildren(
+        h('strong', null, `Có mặt ${here.length}/${students.length}`),
+        h('span', 'muted', ` · Vắng ${students.length - here.length}`),
+        ...(online ? [h('span', 'muted', ` · Online ${online}`)] : []),
+      );
     };
 
-    for (const s of students) {
-      const row = h('button', 'roster__item');
-      row.type = 'button';
-      row.disabled = locked;
+    const rows = students.map((s) => {
+      const row = h('div', 'roster__item');
+      const main = h('button', 'roster__main');
+      main.type = 'button';
+      main.disabled = locked;
       const badge = h('span', 'pill');
+      main.append(h('span', 'roster__code', s.code), h('span', 'roster__name', s.full_name), badge);
+
+      const modeBtn = h('button', 'roster__mode');
+      modeBtn.type = 'button';
+      modeBtn.disabled = locked;
+
       const paint = () => {
         const p = present.get(s.id);
-        row.setAttribute('aria-pressed', String(p));
+        main.setAttribute('aria-pressed', String(p));
         row.classList.toggle('is-absent', !p);
         badge.className = 'pill ' + (p ? 'pill--success' : 'pill--danger');
         badge.textContent = p ? 'Có mặt' : 'Vắng';
+        modeBtn.textContent = MODE_LABEL[mode.get(s.id)];
+        modeBtn.classList.toggle('is-online', mode.get(s.id) === 'online');
+        modeBtn.setAttribute('aria-label', `Hình thức học của ${s.full_name}: ${MODE_LABEL[mode.get(s.id)]}. Chạm để đổi.`);
       };
-      row.append(h('span', 'roster__code', s.code), h('span', 'roster__name', s.full_name), badge);
-      row.addEventListener('click', () => {
-        present.set(s.id, !present.get(s.id));
-        dirty = true;
-        paint();
-        updateSummary();
-      });
+      main.addEventListener('click', () => { present.set(s.id, !present.get(s.id)); dirty = true; paint(); updateSummary(); });
+      modeBtn.addEventListener('click', () => { mode.set(s.id, mode.get(s.id) === 'online' ? 'offline' : 'online'); dirty = true; paint(); updateSummary(); });
+      row.append(main, modeBtn);
       paint();
       list.append(row);
-    }
+      return paint;
+    });
     updateSummary();
 
     const allPresent = button('Đánh dấu cả lớp có mặt', 'outline btn--sm', () => {
       for (const s of students) present.set(s.id, true);
       dirty = true;
-      list.querySelectorAll('.roster__item').forEach((r) => { r.setAttribute('aria-pressed', 'true'); r.classList.remove('is-absent'); const p = r.querySelector('.pill'); p.className = 'pill pill--success'; p.textContent = 'Có mặt'; });
+      rows.forEach((paint) => paint());
       updateSummary();
     });
     allPresent.disabled = locked;
 
     const error = h('p', 'form-error');
     saveBtn.addEventListener('click', () => busy(saveBtn, error, async () => {
-      const records = students.map((s) => ({ student_id: s.id, present: present.get(s.id) }));
+      const records = students.map((s) => ({ student_id: s.id, present: present.get(s.id), mode: mode.get(s.id) }));
       const res = await q(db.rpc('save_attendance', { p_class_id: classId, p_date: date, p_records: records }));
       const n = records.filter((r) => r.present).length;
       dirty = false;
@@ -211,7 +236,7 @@ export async function renderDiemDanh(el) {
     const bar = h('div', 'attendance-bar');
     bar.append(summary, saveBtn);
     const head = h('div', 'section__head');
-    head.append(h('span', 'muted small', 'Chạm vào tên để chuyển Có mặt ↔ Vắng.'), allPresent);
+    head.append(h('span', 'muted small', 'Chạm vào tên để đổi Có mặt ↔ Vắng. Nút bên phải đổi Offline ↔ Online cho buổi này.'), allPresent);
     rosterBox.replaceChildren(...parts, head, list, error, bar);
   }
 

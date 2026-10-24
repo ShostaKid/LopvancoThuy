@@ -38,7 +38,7 @@ export function loadClasses() {
 
 export function loadStudents() {
   return q(db.from('students')
-    .select('id, code, full_name, name_search, dob, active, note, enrollments(id, class_id, term_id, joined_on, left_on)')
+    .select('id, code, full_name, name_search, dob, active, mode, note, enrollments(id, class_id, term_id, joined_on, left_on)')
     .order('code'));
 }
 

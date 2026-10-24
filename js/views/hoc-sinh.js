@@ -97,7 +97,7 @@ function renderList(box, ctx) {
   const table = h('table', 'table');
   table.append(h('thead'), h('tbody'));
   const head = h('tr');
-  head.append(h('th', null, 'Mã'), h('th', null, 'Họ và tên'), h('th', 'hide-sm', 'Ngày sinh'), h('th', null, 'Lớp'));
+  head.append(h('th', null, 'Mã'), h('th', null, 'Họ và tên'), h('th', 'hide-sm', 'Ngày sinh'), h('th', null, 'Lớp'), h('th', null, 'Học'));
   table.tHead.append(head);
 
   for (const s of rows) {
@@ -112,6 +112,7 @@ function renderList(box, ctx) {
       nameCell,
       h('td', 'hide-sm nowrap', formatDate(s.dob)),
       h('td', null, shownTermId ? openClassNames(s, shownTermId, ctx).join(', ') || '—' : '—'),
+      h('td', null, s.mode === 'online' ? 'Online' : 'Offline'),
     );
     table.tBodies[0].append(tr);
   }
@@ -140,6 +141,7 @@ function studentDialog(student, ctx) {
   const name = input('text', 'full_name', student?.full_name);
   name.autocomplete = 'off';
   const dob = input('date', 'dob', student?.dob);
+  const modeSel = select('mode', [['offline', 'Offline (học tại lớp)'], ['online', 'Online (Zoom)']], student?.mode ?? 'offline');
   const note = textarea('note', student?.note, 2);
   const dupBox = h('div');
 
@@ -156,6 +158,7 @@ function studentDialog(student, ctx) {
     field('Họ và tên', name, 'Gõ có dấu, đúng như phụ huynh sẽ gõ để tra cứu.'),
     dupBox,
     field('Ngày sinh', dob, 'Chỉ cần điền khi trùng tên với em khác.'),
+    field('Hình thức học', modeSel, 'Mặc định của em. Hôm nào em học khác đi thì đổi ngay ở màn hình Điểm danh, không cần sửa ở đây.'),
     field('Ghi chú (chỉ admin thấy)', note),
   );
 
@@ -179,7 +182,7 @@ function studentDialog(student, ctx) {
   }
 
   const save = button(student ? 'Lưu' : 'Thêm học sinh', 'primary', () => busy(save, d.error, async () => {
-    const row = { full_name: cleanName(name.value), dob: dob.value || null, note: note.value.trim() || null };
+    const row = { full_name: cleanName(name.value), dob: dob.value || null, mode: modeSel.value, note: note.value.trim() || null };
     if (!row.full_name) throw new Error('Nhập họ và tên.');
     if (student) row.active = active.box.checked;
 

@@ -7,6 +7,11 @@ export function formatWeekdays(days) {
   return [...(days ?? [])].sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]).join(', ') || '—';
 }
 
+// 1800000 → '1.800.000đ' (SPEC 3)
+export function formatMoney(n) {
+  return new Intl.NumberFormat('vi-VN').format(n ?? 0) + 'đ';
+}
+
 // 'YYYY-MM-DD' → 'dd/mm/yyyy'
 export function formatDate(iso) {
   if (!iso) return '';

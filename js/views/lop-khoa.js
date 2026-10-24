@@ -97,8 +97,8 @@ function classDialog(cls, refresh) {
   d.body.append(
     field('Tên lớp', name),
     field('Khối', grade),
-    field('Hình thức', mode),
-    group('Thứ có học', days.el, 'Dùng để gợi ý lớp học hôm nay ở màn hình Điểm danh.'),
+    field('Hình thức chính của lớp', mode, 'Chỉ để tham khảo. Hình thức học của từng em đặt ở màn hình Học sinh.'),
+    group('Thứ có tiết', days.el, 'Chỉ điểm danh được vào đúng các thứ này; lớp chưa chọn thứ nào thì chưa điểm danh được.'),
   );
 
   let active;

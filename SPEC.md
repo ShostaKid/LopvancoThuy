@@ -53,7 +53,7 @@ Seed sẵn khóa `2026–2027` (01/08/2026 → 31/07/2027), `is_current = true`.
 | `name` | text, unique | VD `Lớp 10`, `Lớp 9A`, `Lớp 9B`, `9 Chuyên Văn` |
 | `grade` | smallint | 8–12 |
 | `mode` | text | `online` / `offline` |
-| `weekdays` | smallint[] | Thứ có học (2=Thứ 2 … 8=CN), để gợi ý lớp hôm nay |
+| `weekdays` | smallint[] | Thứ có tiết (2=Thứ 2 … 8=CN). **Chỉ được điểm danh lớp vào đúng các thứ này**; lớp chưa có thứ nào thì chưa điểm danh được. Database chặn, không chỉ giao diện |
 | `active` | boolean | Ngừng dạy thì ẩn, **không xóa** |
 
 Sang khóa mới **không tạo lớp mới**: dùng lại lớp, chỉ ghi danh học sinh mới vào khóa mới.
@@ -66,6 +66,7 @@ Sang khóa mới **không tạo lớp mới**: dùng lại lớp, chỉ ghi danh
 | `name_search` | text, index | Bản chuẩn hóa (xem 6.1), cập nhật bằng trigger |
 | `dob` | date, nullable | Chỉ điền khi trùng tên |
 | `active` | boolean | Nghỉ học thì tắt, giữ lịch sử |
+| `mode` | text | `offline` (mặc định) / `online`: hình thức học mặc định của em, đổi được ở màn hình Học sinh |
 | `note` | text, nullable | Ghi chú nội bộ |
 
 ### 4.4 `enrollments` — em nào học lớp nào, khóa nào
@@ -95,6 +96,7 @@ Unique `(class_id, date)`.
 | `session_id` | fk | |
 | `student_id` | fk | |
 | `present` | boolean | Chỉ có mặt / vắng. Vắng = không tính tiền |
+| `mode` | text | Hình thức học của em trong buổi đó, mặc định lấy từ `students.mode`, đổi được từng buổi (VD em offline học online hôm đó vì lý do bất khả kháng). Không ảnh hưởng học phí |
 | `marked_by` | uuid → auth.users | |
 | `marked_at` | timestamptz | |
 
@@ -200,7 +202,8 @@ Chỉ hiện QR khi hóa đơn `unpaid` hoặc `reported`. Đã `confirmed` → 
 **A1. Đăng nhập.**
 
 **A2. Điểm danh** (màn hình mặc định sau đăng nhập)
-- Chọn ngày (mặc định hôm nay) → gợi ý các lớp có học hôm đó theo `weekdays` (vẫn chọn được lớp khác).
+- Chọn ngày (mặc định hôm nay) → chỉ hiện các lớp **có tiết hôm đó** theo `weekdays`. Ngày không có tiết thì không điểm danh được.
+- Mỗi em có nút Offline/Online cho buổi đó (mặc định theo hình thức của em).
 - Danh sách học sinh ghi danh lớp đó trong khóa hiện tại (chưa `left_on`), **mặc định tất cả có mặt**, chạm vào tên để chuyển sang vắng. Nút Lưu to.
 - Lưu = tạo `session` nếu chưa có + upsert `attendance`.
 - Mở lại buổi đã điểm danh thì hiện trạng thái đã lưu để sửa (trừ tháng đã chốt).
@@ -261,3 +264,4 @@ Mỗi bước xong thì dừng, báo chủ dự án kiểm tra theo mục "Kiể
   - Khóa sửa điểm danh tháng đã chốt chặn ở database (6.3).
   - Giữ giới hạn nội dung CK ≤ 50 ký tự; giới hạn thật của VietQR chưa xác minh, sẽ thử thực tế ở bước 6 rồi sửa nếu bị cắt (6.2).
 - **24/10/2026** — tách vai trò Admin (cô giáo) / co-admin (trợ giảng). Co-admin không chốt / mở lại tháng, không sửa Cài đặt. Thêm bảng `staff` (2, 4.10, 5, 7 A5, A7). Bước 2 làm logic trước, giao diện và deploy sau (9).
+- **24/10/2026 (bước 5)** — thêm `students.mode` và `attendance.mode` (học onl/off theo từng em, đổi được từng buổi). `classes.mode` giữ lại nhưng chỉ để tham khảo. Điểm danh bị khóa theo lịch lớp: chỉ đúng thứ có tiết (Lớp 8: Thứ 2). Quy tắc chốt lại tháng ở 6.3 cài đặt trong hàm `close_month`; hóa đơn của tháng đang mở lại bị ẩn với phụ huynh.
