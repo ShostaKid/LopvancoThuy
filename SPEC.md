@@ -173,7 +173,7 @@ VD `"  Nguyễn  Văn ĐỨC "` → `"nguyen van duc"`. Dùng cùng một hàm S
 Định dạng: **`<TÊN KHÔNG DẤU VIẾT HOA> HOC PHI T<tháng> <MÃ HS>`**
 VD: `NGUYEN VAN AN HOC PHI T10 HS042`
 - Tên đặt trước (phụ huynh dễ nhận ra), mã HS ở cuối (để đối soát sao kê).
-- Giới hạn tổng **≤ 50 ký tự**. Nếu vượt: **cắt bớt phần tên, không bao giờ cắt `HOC PHI T..` và mã HS**.
+- Giới hạn tổng **≤ 50 ký tự**. Nếu vượt: **rút gọn tên** thành chữ cái đầu từ trái sang (VD `NGUYEN NGOC VAN LINH` → `N N V LINH`), giữ nguyên từ cuối, `HOC PHI T..` và mã HS; chỉ khi rút gọn hết vẫn dài mới cắt bớt tên.
 - Chỉ dùng A–Z, 0–9, dấu cách.
 
 ### 6.3 Chốt tháng
@@ -270,3 +270,4 @@ Mỗi bước xong thì dừng, báo chủ dự án kiểm tra theo mục "Kiể
 - **24/10/2026** — tách vai trò Admin (cô giáo) / co-admin (trợ giảng). Co-admin không chốt / mở lại tháng, không sửa Cài đặt. Thêm bảng `staff` (2, 4.10, 5, 7 A5, A7). Bước 2 làm logic trước, giao diện và deploy sau (9).
 - **24/10/2026 (bước 5)** — thêm `students.mode` và `attendance.mode` (học onl/off theo từng em, đổi được từng buổi). `classes.mode` giữ lại nhưng chỉ để tham khảo. Điểm danh bị khóa theo lịch lớp: chỉ đúng thứ có tiết (Lớp 8: Thứ 2). Quy tắc chốt lại tháng ở 6.3 cài đặt trong hàm `close_month`; hóa đơn của tháng đang mở lại bị ẩn với phụ huynh.
 - **24/10/2026 (bước 6)** — tài khoản nhận tiền theo từng lớp (bảng `bank_accounts`, 4.9b); `lookup_student` trả tài khoản theo từng hóa đơn. Điểm danh chặn em chưa ghi danh lớp đó ngay ở database (trigger `attendance`). Mọi hộp xác nhận dùng hộp thoại của trang thay `window.confirm` (khung xem trước và một số trình duyệt chặn `confirm`, nút "Mở lại tháng" từng không phản hồi vì vậy). Trang tra cứu phụ huynh là `index.html`.
+- **24/10/2026 (bước 7)** — nội dung chuyển khoản dài quá thì rút gọn tên thành chữ cái đầu thay vì cắt (6.2). Báo cáo (A6): theo tháng (tổng tiền, theo lớp gồm online/offline, danh sách chưa đóng), theo khóa, xuất Excel (.xlsx, 2 sheet) và CSV. Hàm `month_report`, `term_report`, `month_attendance` (db/010).

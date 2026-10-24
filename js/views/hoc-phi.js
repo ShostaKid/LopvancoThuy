@@ -15,7 +15,7 @@ const STATUS_ORDER = { reported: 0, unpaid: 1, confirmed: 2 };   // đã báo ch
 const view = { month: null, status: 'all' };   // giữ lựa chọn khi chuyển màn hình
 
 // Các tháng từ đầu khóa hiện tại tới tháng này, mới nhất trước, cộng mọi tháng đã chốt
-function monthChoices(term, closed) {
+export function monthChoices(term, closed) {
   const now = vnToday().slice(0, 7);
   const set = new Set(closed);
   if (term) {
@@ -31,7 +31,7 @@ function monthChoices(term, closed) {
   return [...set].sort().reverse();
 }
 
-const monthLabel = (m) => `Tháng ${m.slice(5)}/${m.slice(0, 4)}`;
+export const monthLabel = (m) => `Tháng ${m.slice(5)}/${m.slice(0, 4)}`;
 
 export async function renderHocPhi(el, ctx) {
   const title = h('h1', 'page-title', 'Học phí');

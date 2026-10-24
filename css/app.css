@@ -275,3 +275,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pay-actions { display: grid; gap: 8px; }
 .pick-item { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--line); background: #fff; text-align: left; cursor: pointer; }
 .pick-item:first-child { border-top: 0; }
+
+/* ---------- Báo cáo ---------- */
+
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: 999px; background: #fff; font-weight: 600; cursor: pointer; }
+.tab.is-active { border-color: var(--primary); background: var(--primary); color: #fff; }
+.table tr.is-total td { background: var(--panel); font-weight: 700; }
+.export-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.section__title { margin-top: 24px; }
