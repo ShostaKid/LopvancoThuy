@@ -14,6 +14,25 @@ export function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+// Thứ của một ngày 'YYYY-MM-DD' theo quy ước của lớp: 2 = Thứ 2 … 8 = CN (không phụ thuộc múi giờ máy)
+export function weekdayOf(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const w = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return w === 0 ? 8 : w + 1;
+}
+
+// Cộng/trừ ngày cho chuỗi 'YYYY-MM-DD'
+export function addDays(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// Tên gọi theo thứ tự Việt: sắp theo tên (từ cuối) rồi tới họ tên đầy đủ
+export function compareVnNames(a, b) {
+  const last = (s) => s.trim().split(/\s+/).pop();
+  return last(a).localeCompare(last(b), 'vi') || a.localeCompare(b, 'vi');
+}
+
 // Hôm nay theo giờ Việt Nam, dạng 'YYYY-MM-DD'
 export function vnToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());

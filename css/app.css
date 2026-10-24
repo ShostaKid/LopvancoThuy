@@ -199,6 +199,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .toast.is-shown { transform: translate(-50%, 0); opacity: 1; }
 .toast--error { background: var(--danger); }
 
+/* ---------- Điểm danh ---------- */
+
+.date-row { display: flex; gap: 8px; align-items: center; }
+.date-row input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-field); background: #fff; font-size: 16px; }
+.date-row .btn { flex-shrink: 0; min-width: 44px; }
+.card .field:last-child { margin-bottom: 0; }
+
+.roster { display: grid; gap: 8px; margin-bottom: 96px; }
+.roster__item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 12px; background: #fff; text-align: left; cursor: pointer; }
+.roster__item.is-absent { border-color: var(--danger); background: var(--danger-soft); }
+.roster__item:disabled { cursor: default; opacity: 0.7; }
+.roster__code { flex-shrink: 0; width: 56px; color: var(--muted); font-size: 14px; }
+.roster__name { flex: 1; min-width: 0; font-weight: 500; }
+
+/* Thanh lưu dính đáy màn hình để nút Lưu luôn trong tầm ngón tay */
+.attendance-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: #fff; box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06); }
+.attendance-bar .btn { min-height: 48px; padding: 0 24px; white-space: nowrap; }
+.attendance-bar__sum { min-width: 0; font-size: 15px; }
+.attendance-bar__sum span { white-space: nowrap; }
+
 /* ---------- Khung chờ (màn hình chưa làm) ---------- */
 
 .perm-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
