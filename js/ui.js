@@ -135,3 +135,21 @@ export function toast(message, variant = 'success') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('is-shown'), 3500);
 }
+
+// Hộp xác nhận của trang, thay window.confirm (nhiều trình duyệt nhúng và chế độ ứng dụng chặn confirm,
+// nút bấm khi đó âm thầm không làm gì). Trả về Promise<boolean>.
+export function confirmDialog(title, message, okLabel = 'Đồng ý', variant = 'primary') {
+  return new Promise((resolve) => {
+    const d = openDialog(title);
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+      if (d.dialog.open) d.close();
+    };
+    d.body.append(h('p', 'confirm-text', message));
+    d.footer.append(button('Hủy', 'outline', () => finish(false)), button(okLabel, variant, () => finish(true)));
+    d.dialog.addEventListener('close', () => finish(false));
+  });
+}

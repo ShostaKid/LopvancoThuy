@@ -1,9 +1,9 @@
 // A4. Lớp & khóa (SPEC 7): CRUD lớp, tạo khóa, đặt khóa hiện tại, chuyển khóa
 import { db } from '../db.js';
 import { h } from '../dom.js';
-import { q, loadTerms, loadClasses, loadEnrollments } from '../data.js';
+import { q, loadTerms, loadClasses, loadEnrollments, loadBankAccounts } from '../data.js';
 import { formatDate, formatWeekdays, vnToday, WEEKDAYS, WEEKDAY_LABELS } from '../format.js';
-import { openDialog, button, busy, field, group, input, select, checkbox, chipGroup, callout, toast } from '../ui.js';
+import { openDialog, button, busy, field, group, input, select, checkbox, chipGroup, callout, toast, confirmDialog } from '../ui.js';
 
 const MODE_LABELS = { online: 'Online', offline: 'Offline' };
 let showInactive = false;   // giữ lựa chọn khi vẽ lại
@@ -12,9 +12,9 @@ export async function renderLopKhoa(el) {
   const title = h('h1', 'page-title', 'Lớp & khóa');
   el.replaceChildren(title, h('p', 'muted', 'Đang tải…'));
 
-  let terms, classes, enrollments;
+  let terms, classes, enrollments, accounts;
   try {
-    [terms, classes] = await Promise.all([loadTerms(), loadClasses()]);
+    [terms, classes, accounts] = await Promise.all([loadTerms(), loadClasses(), loadBankAccounts()]);
     const current = terms.find((t) => t.is_current);
     enrollments = current ? await loadEnrollments(current.id) : [];
   } catch (err) {
@@ -26,7 +26,7 @@ export async function renderLopKhoa(el) {
   const current = terms.find((t) => t.is_current);
   el.replaceChildren(
     title,
-    classesSection(classes, enrollments, current, refresh),
+    classesSection(classes, enrollments, current, refresh, accounts),
     termsSection(terms, refresh),
     transferSection(terms, classes, refresh),
   );
@@ -40,9 +40,9 @@ function sectionHead(titleText, ...actions) {
 
 // ---------------- Lớp ----------------
 
-function classesSection(classes, enrollments, current, refresh) {
+function classesSection(classes, enrollments, current, refresh, accounts) {
   const section = h('section', 'section');
-  section.append(sectionHead('Lớp', button('+ Thêm lớp', 'primary', () => classDialog(null, refresh))));
+  section.append(sectionHead('Lớp', button('+ Thêm lớp', 'primary', () => classDialog(null, refresh, accounts))));
 
   const size = new Map();
   for (const e of enrollments) if (!e.left_on) size.set(e.class_id, (size.get(e.class_id) ?? 0) + 1);
@@ -63,7 +63,7 @@ function classesSection(classes, enrollments, current, refresh) {
     for (const c of shown) {
       const tr = h('tr', c.active ? null : 'is-muted');
       const nameCell = h('td');
-      nameCell.append(button(c.name, 'link', () => classDialog(c, refresh)));
+      nameCell.append(button(c.name, 'link', () => classDialog(c, refresh, accounts)));
       if (!c.active) nameCell.append(h('span', 'pill pill--muted pill--sm', 'Đã ngừng'));
       tr.append(
         nameCell,
@@ -87,18 +87,20 @@ function classesSection(classes, enrollments, current, refresh) {
   return section;
 }
 
-function classDialog(cls, refresh) {
+function classDialog(cls, refresh, accounts) {
   const d = openDialog(cls ? `Sửa lớp ${cls.name}` : 'Thêm lớp');
   const name = input('text', 'name', cls?.name);
   name.placeholder = 'VD: Lớp 9A, 9 Chuyên Văn';
   const grade = select('grade', [8, 9, 10, 11, 12].map((g) => [String(g), `Khối ${g}`]), String(cls?.grade ?? 9));
   const mode = select('mode', [['offline', 'Offline (học tại lớp)'], ['online', 'Online (Zoom)']], cls?.mode ?? 'offline');
   const days = chipGroup(WEEKDAYS.map((n) => [String(n), WEEKDAY_LABELS[n]]), (cls?.weekdays ?? []).map(String));
+  const account = select('account', accounts.map((a) => [a.id, `${a.label} · ${a.account_no}`]), cls?.bank_account_id ?? accounts[0]?.id);
   d.body.append(
     field('Tên lớp', name),
     field('Khối', grade),
     field('Hình thức chính của lớp', mode, 'Chỉ để tham khảo. Hình thức học của từng em đặt ở màn hình Học sinh.'),
     group('Thứ có tiết', days.el, 'Chỉ điểm danh được vào đúng các thứ này; lớp chưa chọn thứ nào thì chưa điểm danh được.'),
+    field('Tài khoản nhận học phí', account, accounts.length ? 'Thêm hoặc sửa tài khoản ở màn hình Cài đặt. Em học nhiều lớp thì hóa đơn dùng tài khoản của lớp em học nhiều buổi nhất trong tháng.' : 'Chưa có tài khoản nào. Thêm ở màn hình Cài đặt trước.'),
   );
 
   let active;
@@ -113,8 +115,10 @@ function classDialog(cls, refresh) {
       grade: Number(grade.value),
       mode: mode.value,
       weekdays: days.values().map(Number),
+      bank_account_id: account.value,
     };
     if (!row.name) throw new Error('Nhập tên lớp.');
+    if (!row.bank_account_id) throw new Error('Chọn tài khoản nhận học phí. Nếu chưa có, thêm ở màn hình Cài đặt.');
     if (cls) {
       row.active = active.box.checked;
       await q(db.from('classes').update(row).eq('id', cls.id));
@@ -146,8 +150,8 @@ function termsSection(terms, refresh) {
 
     const actions = h('div', 'list__actions');
     if (!t.is_current) {
-      const makeCurrent = button('Đặt làm khóa hiện tại', 'outline btn--sm', () => {
-        if (!confirm(`Đặt ${t.name} làm khóa hiện tại? Điểm danh và ghi danh mới sẽ tính vào khóa này.`)) return;
+      const makeCurrent = button('Đặt làm khóa hiện tại', 'outline btn--sm', async () => {
+        if (!(await confirmDialog('Đặt khóa hiện tại', `Đặt ${t.name} làm khóa hiện tại? Điểm danh và ghi danh mới sẽ tính vào khóa này.`))) return;
         busy(makeCurrent, null, async () => {
           await q(db.rpc('set_current_term', { p_term_id: t.id }));
           toast(`${t.name} là khóa hiện tại.`);

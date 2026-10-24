@@ -255,3 +255,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .inv .row-actions { justify-content: flex-start; margin-top: 4px; }
 @media (max-width: 599px) { .roster__code { width: 44px; font-size: 13px; } .roster__mode { width: 72px; } .roster__main { padding-left: 12px; gap: 8px; } }
 .btn-row { margin-top: 12px; }
+.confirm-text { margin: 0 0 16px; white-space: pre-line; }
+
+/* ---------- Trang tra cứu của phụ huynh ---------- */
+
+.page--narrow { max-width: 560px; }
+.result { margin-top: 20px; display: grid; gap: 12px; }
+.code-big { font-size: 20px; letter-spacing: 1px; }
+.amount-big { font-size: 24px; }
+.month-card { display: flex; flex-direction: column; gap: 8px; }
+.month-card .card__title { margin: 0; }
+.month-card p { margin: 0; }
+.pill.block { display: block; text-align: center; padding: 10px 12px; }
+.qr-box { display: flex; justify-content: center; }
+.pay-info { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--panel); }
+.pay-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pay-row .muted { flex-basis: 100%; }
+.pay-val { flex: 1; min-width: 0; word-break: break-word; }
+.pay-actions { display: grid; gap: 8px; }
+.pick-item { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--line); background: #fff; text-align: left; cursor: pointer; }
+.pick-item:first-child { border-top: 0; }

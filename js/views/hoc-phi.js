@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { h } from '../dom.js';
 import { q, loadTerms } from '../data.js';
 import { formatMoney, formatDate, vnToday } from '../format.js';
-import { openDialog, button, busy, field, select, callout, toast } from '../ui.js';
+import { openDialog, button, busy, field, select, callout, toast, confirmDialog } from '../ui.js';
 
 const STATUS = {
   unpaid: ['Chưa đóng', 'pill pill--warning'],
@@ -135,7 +135,7 @@ export async function renderHocPhi(el, ctx) {
       top.append(who, h('span', cls, label));
       const money = h('div', 'inv__money');
       money.append(h('span', null, `${i.sessions_count} buổi`), h('strong', null, formatMoney(i.amount)));
-      card.append(top, money, h('div', 'small muted code', i.transfer_note));
+      card.append(top, money, h('div', 'small muted code', i.transfer_note), h('div', 'small muted', `Nhận vào: ${i.bank_label ?? 'chưa gán tài khoản'}`));
       for (const w of warningsOf(i)) card.append(h('div', 'small text-warning', w));
       if (closed) {
         const box = h('div', 'row-actions');
@@ -201,6 +201,7 @@ export async function renderHocPhi(el, ctx) {
           confirmed_changed: `${who}: hóa đơn đã xác nhận giữ nguyên ${w.old_count} buổi, nhưng điểm danh hiện có ${w.new_count} buổi.`,
           reported_changed: `${who}: phụ huynh báo chuyển ${formatMoney(w.reported_amount)}, nhưng hiện tính ${formatMoney(w.new_amount)}.`,
           zero_kept: `${who}: không còn buổi nào nhưng hóa đơn đã ${w.status === 'confirmed' ? 'xác nhận' : 'báo chuyển'}, đã giữ lại.`,
+          multi_account: `${who}: học nhiều lớp dùng các tài khoản nhận tiền khác nhau. Hóa đơn dùng tài khoản của lớp em học nhiều buổi nhất.`,
         }[w.type];
         ul.append(h('li', null, text));
       }
@@ -214,7 +215,7 @@ export async function renderHocPhi(el, ctx) {
     const paid = list.filter((i) => i.status !== 'unpaid').length;
     const msg = `Mở lại ${monthLabel(view.month).toLowerCase()}?\n\n- Điểm danh tháng này sửa được trở lại.\n- Phụ huynh tạm thời không thấy hóa đơn tháng này.\n- Khi chốt lại, hóa đơn chưa xác nhận sẽ được tính lại.`
       + (paid ? `\n- Đang có ${paid} hóa đơn đã báo chuyển hoặc đã xác nhận: sẽ được giữ lại, nhớ đối chiếu sau khi chốt lại.` : '');
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog('Mở lại tháng', msg, 'Mở lại tháng'))) return;
     try {
       await q(db.rpc('reopen_month', { p_month: view.month }));
       toast(`Đã mở lại ${monthLabel(view.month).toLowerCase()}.`);

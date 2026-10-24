@@ -4,7 +4,7 @@ import { db } from '../db.js';
 import { h } from '../dom.js';
 import { q, loadTerms, loadClasses } from '../data.js';
 import { formatDate, formatWeekdays, vnToday, weekdayOf, addDays, compareVnNames } from '../format.js';
-import { button, busy, field, input, select, callout, toast } from '../ui.js';
+import { button, busy, field, input, select, callout, toast, confirmDialog } from '../ui.js';
 
 // Giữ ngày và lớp đang chọn khi chuyển qua lại giữa các màn hình
 const state = { date: null, classId: '' };
@@ -58,11 +58,11 @@ export async function renderDiemDanh(el) {
     classSelect.value = state.classId;
   }
 
-  const confirmLeave = () => !dirty || confirm('Điểm danh chưa lưu sẽ mất. Vẫn chuyển?');
+  const confirmLeave = async () => !dirty || confirmDialog('Điểm danh chưa lưu', 'Điểm danh chưa lưu sẽ mất. Vẫn chuyển?', 'Vẫn chuyển', 'danger');
 
-  function setDate(value) {
+  async function setDate(value) {
     if (!value) { dateInput.value = state.date; return; }
-    if (!confirmLeave()) { dateInput.value = state.date; return; }
+    if (!(await confirmLeave())) { dateInput.value = state.date; return; }
     state.date = value;
     dateInput.value = value;
     fillClassOptions();
@@ -70,8 +70,8 @@ export async function renderDiemDanh(el) {
   }
 
   dateInput.addEventListener('change', () => setDate(dateInput.value));
-  classSelect.addEventListener('change', () => {
-    if (!confirmLeave()) { classSelect.value = state.classId; return; }
+  classSelect.addEventListener('change', async () => {
+    if (!(await confirmLeave())) { classSelect.value = state.classId; return; }
     state.classId = classSelect.value;
     load();
   });

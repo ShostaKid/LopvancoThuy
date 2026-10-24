@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { h } from '../dom.js';
 import { q, loadTerms, loadClasses, loadStudents } from '../data.js';
 import { formatDate, normalizeName, cleanName, vnToday } from '../format.js';
-import { openDialog, button, busy, field, group, input, select, textarea, checkbox, chipGroup, callout, toast } from '../ui.js';
+import { openDialog, button, busy, field, group, input, select, textarea, checkbox, chipGroup, callout, toast, confirmDialog } from '../ui.js';
 
 // Bộ lọc giữ nguyên khi chuyển qua lại giữa các màn hình
 const filters = { text: '', term: 'all', classId: '', status: 'active' };
@@ -216,8 +216,10 @@ function studentDialog(student, ctx) {
   }));
 
   if (student) {
-    const del = button('Xóa', 'danger', () => {
-      if (!confirm(`Xóa hẳn ${student.code} ${student.full_name}?\n\nChỉ nên xóa khi nhập nhầm. Em đã có điểm danh hoặc hóa đơn thì không xóa được; khi đó hãy bỏ chọn “Đang học”.`)) return;
+    const del = button('Xóa', 'danger', async () => {
+      if (!(await confirmDialog('Xóa học sinh', `Xóa hẳn ${student.code} ${student.full_name}?
+
+Chỉ nên xóa khi nhập nhầm. Em đã có điểm danh hoặc hóa đơn thì không xóa được; khi đó hãy bỏ chọn “Đang học”.`, 'Xóa', 'danger'))) return;
       busy(del, d.error, async () => {
         await q(db.from('students').delete().eq('id', student.id));
         d.close();

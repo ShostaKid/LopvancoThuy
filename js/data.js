@@ -33,7 +33,7 @@ export function loadTerms() {
 }
 
 export function loadClasses() {
-  return q(db.from('classes').select('id, name, grade, mode, weekdays, active').order('grade').order('name'));
+  return q(db.from('classes').select('id, name, grade, mode, weekdays, active, bank_account_id').order('grade').order('name'));
 }
 
 export function loadStudents() {
@@ -44,4 +44,8 @@ export function loadStudents() {
 
 export function loadEnrollments(termId) {
   return q(db.from('enrollments').select('id, student_id, class_id, left_on').eq('term_id', termId));
+}
+
+export function loadBankAccounts() {
+  return q(db.from('bank_accounts').select('id, label, bank_bin, account_no, account_name').order('created_at'));
 }
